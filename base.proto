@@ -1,0 +1,42 @@
+syntax = "proto3"
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+
+import "./api.proto"
+
+service Controller {
+  // The connection should be dropped on failure, after responding
+  rpc init (InitRequest) returns (Response);
+
+  rpc push (RequestType) returns (ResponseType);
+}
+
+enum SensorType {
+  None = 1;
+  Microphone = 2;
+}
+
+// Sent by the sensor on initialisation
+message InitRequest {
+  // The type of sensor. Use Other if none apply
+  SensorType type = 1;
+  // A human-readable non-unique name of the type of device
+  // (i.e. "WibbleWobble light switch")
+  string name = 2;
+  // The format of the push data.
+  // If your use case is not covered by any of the apis in the 'api.proto',
+  // please submit a pull request with your own, instead of privately constructing one over 'raw'
+  ApiType api = 3;
+}
+
+// Sent by the controller to acknowlege a controller
+message InitReponse {
+  bool success = 1;
+}
+
+
+// Sent by the 
+message Push {
+
+}

@@ -1,0 +1,20 @@
+syntax = "proto3"
+
+enum ApiType {
+  // Some form of human-readable text. Mainly for debugging
+  Readout = 1;
+  // A device that registers an event, such as an IR sensor
+  Alert = 2;
+  // A device that reads an audio signal
+  Microphone = 3;
+}
+
+message Readout {
+  string out = 1;
+}
+
+message Alert {}
+
+message Microphone {
+  bytes ogg_stream = 0;
+}
