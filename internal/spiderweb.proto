@@ -1,0 +1,72 @@
+service RemoteNode {
+  // Commits some changes for the next epoch
+  rpc commit (stream EpochCommitment) returns (CommitResponse)
+
+  // Offers a completed epoch to the system. 
+  // The lowest hash value at the end of the epoch wins (big endian)
+  // Nodes must check that the SecureEpoch is semanticaly equivalent with their view
+  // The response MUST be sent when the next epoch is complete
+  //
+  // TODO: maybe alert on repeated misbehaviour
+  rpc offer (OfferRequest) returns (OfferResult)
+
+  // Requests the latest epoch number
+  rpc now(NowRequest) returns (NowResponse)
+
+  // Signs a SecureEpoch
+  rpc approve(SecureEpoch) returns (ApproveResponse)
+}
+
+message OfferRequest {
+  SecureEpoch offered = 1;
+}
+
+// Enforces a consistent epoch structure
+message SecureEpoch {
+  // The unique value that defines this epoch
+  bytes encoded_epoch = 1;
+
+  // The collected signatures for this epoch
+  repeated Signature signatures = 2;
+}
+
+message Epoch {
+  Hash previous_epoch = 1;
+
+  uint64 number = 2;
+  map<NodeId, EpochView> views = 3;
+  repeated NodeId joined = 4;
+  repeated NodeId left = 5;
+  
+  repeated NodeId root_added = 6;
+  repeated NodeId root_removed = 7;
+
+  // Any requests at or after created should be put off for the next epoch
+  Time created = 8;
+}
+
+message EpochView {
+  repeated EpochCommitment commitments = 1;
+}
+
+message EpochCommitment {
+  Time timestamp = 1;
+  reserved 2 to 256;
+  oneof type {
+    ShareRequest share = 257;
+  }
+}
+
+message ShareRequest {
+  PushRequest req = 1;
+  Token sender = 2;
+}
+
+message NowRequest {
+  uint64 epoch = 1;
+}
+
+message CommitResponse {}
+message OfferResponse {}
+message NowResponse {}
+message ApproveResponse {}
