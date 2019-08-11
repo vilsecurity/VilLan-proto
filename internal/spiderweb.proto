@@ -1,6 +1,6 @@
 service RemoteNode {
   // Commits some changes for the next epoch
-  rpc commit (stream EpochCommitment) returns (CommitResponse)
+  rpc commit (stream EpochCommit) returns (CommitResponse)
 
   // Offers a completed epoch to the system. 
   // The lowest hash value at the end of the epoch wins (big endian)
@@ -46,10 +46,10 @@ message Epoch {
 }
 
 message EpochView {
-  repeated EpochCommitment commitments = 1;
+  repeated EpochCommit commits = 1;
 }
 
-message EpochCommitment {
+message EpochCommit {
   Time timestamp = 1;
   reserved 2 to 256;
   oneof type {
