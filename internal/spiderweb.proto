@@ -1,72 +1,156 @@
-service RemoteNode {
-  // Commits some changes for the next epoch
-  rpc commit (stream EpochCommit) returns (CommitResponse)
-
-  // Offers a completed epoch to the system. 
-  // The lowest hash value at the end of the epoch wins (big endian)
-  // Nodes must check that the SecureEpoch is semanticaly equivalent with their view
-  // The response MUST be sent when the next epoch is complete
-  //
-  // TODO: maybe alert on repeated misbehaviour
-  rpc offer (OfferRequest) returns (OfferResult)
-
-  // Requests the latest epoch number
-  rpc now(NowRequest) returns (NowResponse)
-
-  // Signs a SecureEpoch
-  rpc approve(SecureEpoch) returns (ApproveResponse)
+// -------------------------------- //
+//         Exposed services         //
+// -------------------------------- //
+service Worker {
+  rpc notify_epoch (NotifyEpochRequest) returns (NotifyEpochResponse);
 }
 
-message OfferRequest {
-  SecureEpoch offered = 1;
+service Master {
+  rpc notify_commit (NotifyCommitRequest) returns (NotifyCommitResponse);
 }
 
-// Enforces a consistent epoch structure
+service Storage {
+  rpc store_commit (stream StoreCommitRequest) returns (StoreCommitResponse);
+
+  rpc retrieve_epoch (RetreiveEpochRequest) returns (stream RetreiveEpochResponse);
+}
+
+// This can only be exposed to master nodes and other storages
+service Accessor {
+  rpc retrieve_commit (RetrieveCommitRequest) returns (stream RetrieveCommitResponse);
+}
+
+// Exposed only to other masters. 
+//
+// Make sure to clean this up after a node is kicked out!
+service Cabal {
+  rpc share (stream ShareRequest) returns (ShareResponse);
+  rpc submit (SubmitRequest) returns (SubmitResponse);
+  rpc selected (stream SelectedRequest) returns (SelectedResponse);
+}
+
+// -------------------------------- //
+//       Actual rpc messages        //
+// -------------------------------- //
+
+message NotifyEpochRequest {
+  SecureEpoch epoch = 1;
+}
+message NotifyEpochResponse {}
+
+message NotifyCommitRequest {
+  Hash commit_digest = 1;
+  Signature commit_signature = 2;
+}
+
+message NotifyCommitResponse {}
+
+message StoreCommitRequest {
+  oneof type {
+    Signature commit_signature = 1;
+    bytes commit_part = 2;
+  }
+}
+
+message StoreCommitResponse {
+  Hash commit_digest = 1;
+}
+
+message RetrieveCommitRequest {
+  Hash commit_digest = 1;
+}
+
+message RetrieveCommitResponse {
+  // This should deserialise into a Commit
+  bytes commit_part = 1;
+}
+
+message ShareRequest {
+  SignedCommitRef commit_ref = 1;
+}
+
+message ShareResponse {}
+
+message SubmitRequest {
+  bytes epoch_part = 1;
+}
+
+message SubmitResponse {}
+
+message SelectedRequest {
+  Hash epoch_digest = 1;
+  Signature signature = 2;
+}
+
+message SelectedResponse {}
+
+// -------------------------------- //
+//        Component messages        //
+// -------------------------------- //
+
 message SecureEpoch {
-  // The unique value that defines this epoch
-  bytes encoded_epoch = 1;
-
-  // The collected signatures for this epoch
-  repeated Signature signatures = 2;
+  bytes epoch = 1;
+  repeated Signature epoch_signature = 2;
 }
 
 message Epoch {
   Hash previous_epoch = 1;
 
-  uint64 number = 2;
-  map<NodeId, EpochView> views = 3;
-  repeated NodeId joined = 4;
-  repeated NodeId left = 5;
-  
-  repeated NodeId root_added = 6;
-  repeated NodeId root_removed = 7;
+  repeated SignedCommitRef commits = 2;
+  repeated NodeId roots = 3;
+  repeated NodeId masters = 4;
+  map<NodeId, SensorCfg> sensors = 5;
 
-  // Any requests at or after created should be put off for the next epoch
-  Time created = 8;
+  Time created = 6; 
 }
 
-message EpochView {
-  repeated EpochCommit commits = 1;
+message SignedCommitRef {
+  Hash commit_digest = 1;
+  Signature commit_signature = 2;
 }
 
-message EpochCommit {
-  Time timestamp = 1;
-  reserved 2 to 256;
+message SensorCfgChange {
+  NodeId target = 1;
+  SensorCfg new_cfg = 2;
+}
+
+message Commit {
   oneof type {
-    ShareRequest share = 257;
+    NodeId root_add = 1;
+    NodeId root_remove = 2;
+
+    NodeId master_add = 3;
+    NodeId master_remove = 4;
+
+    NodeId worker_add = 5;
+    NodeId worker_remove = 6;
+
+    NodeId sensor_add = 7;
+    NodeId sensore_remove = 8;
+
+    bytes data = 9;
+
+    SensorCfgChange sensor_cfg = 10;
   }
 }
 
-message ShareRequest {
-  PushRequest req = 1;
-  Token sender = 2;
+message SensorCfg {
+  // The stores MAY refuse to store anything over this size
+  uint64 max_store_bytes = 1;
 }
 
-message NowRequest {
-  uint64 epoch = 1;
+// An X.509 cert
+message NodeId {
+  bytes cert = 1;
 }
 
-message CommitResponse {}
-message OfferResponse {}
-message NowResponse {}
-message ApproveResponse {}
+// An X.509 cert with a signature of a blake2s hash
+message Signature {
+  NodeId signer = 1;
+  bytes dat = 2;
+}
+
+// A blake2s hash
+message Hash {
+  bytes data = 1;
+}
