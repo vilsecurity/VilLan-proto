@@ -6,11 +6,12 @@ package VilSecurity.spiderweb.proto;
 //         Exposed services         //
 // -------------------------------- //
 service Worker {
-  rpc notify_epoch (NotifyEpochRequest) returns (NotifyEpochResponse);
+  rpc notify_epoch (GreetRequest) returns (GreetResponse);
 }
 
 service Master {
   rpc notify_commit (NotifyCommitRequest) returns (NotifyCommitResponse);
+  rpc latest_epoch (LatestEpochRequest) returns (LatestEpochResponse);
 }
 
 service Storage {
@@ -19,13 +20,16 @@ service Storage {
   rpc retrieve_epoch (RetreiveEpochRequest) returns (stream RetreiveEpochResponse);
 }
 
-// This can only be exposed to master nodes and other storages
+service Reader {}
+service Root {}
+
+// This can only be exposed to nodes with the Reader role
 service Accessor {
   // Don't allow sensors to read stored private data
   rpc retrieve_commit (RetrieveCommitRequest) returns (stream RetrieveCommitResponse);
 }
 
-// Exposed only to other masters. 
+// Exposed only to nodes with the Master role
 //
 // Make sure to clean this up after a node is kicked out!
 service Cabal {
@@ -38,10 +42,10 @@ service Cabal {
 //       Actual rpc messages        //
 // -------------------------------- //
 
-message NotifyEpochRequest {
-  SecureEpoch epoch = 1;
+message GreetRequest {
+  Hash epoch_digest = 1;
 }
-message NotifyEpochResponse {}
+message GreetResponse {}
 
 message NotifyCommitRequest {
   Hash commit_digest = 1;
@@ -55,6 +59,12 @@ message StoreCommitRequest {
     Signature commit_signature = 1;
     bytes commit_part = 2;
   }
+}
+
+message LatestEpochRequest {}
+
+message LatestEpochResponse {
+  Hash epoch_digest = 1;
 }
 
 message StoreCommitResponse {
@@ -109,12 +119,13 @@ message SecureEpoch {
 message Epoch {
   Hash previous_epoch = 1;
 
-  repeated SignedCommitRef commits = 2;
-  repeated NodeId roots = 3;
-  repeated NodeId masters = 4;
-  repeated SensorCfg sensors = 5;
+  Time created = 2;
 
-  Time created = 6; 
+  repeated SignedCommitRef commits = 3;
+
+  repeated NodeState nodes = 4;
+  repeated SensorState sensors = 5;
+  LimitCfg limits = 6;
 }
 
 message SignedCommitRef {
@@ -124,33 +135,49 @@ message SignedCommitRef {
 
 message SensorCfgChange {
   NodeId target = 1;
-  SensorCfg new_cfg = 2;
+  SensorCfg new_state = 2;
+}
+
+message NodeState {
+  NodeRoles roles = 1;
+  // A nodes last seen top nonce
+  uint64 top_nonce = 2;
+}
+
+message NodeRoles {
+  bool root = 1;
+  bool master = 2;
+  bool worker = 3;
+  bool storage = 4;
+  bool reader = 5;
+}
+
+message NodeRolesChange {
+  NodeId target = 1;
+  NodeRoles new_roles = 2;
 }
 
 message Commit {
+  // This MUST strictly increase for each NodeId
+  uint64 nonce = 1;
+
   oneof type {
-    NodeId root_add = 1;
-    NodeId root_remove = 2;
-
-    NodeId master_add = 3;
-    NodeId master_remove = 4;
-
-    NodeId worker_add = 5;
-    NodeId worker_remove = 6;
-
-    NodeId sensor_add = 7;
-    NodeId sensore_remove = 8;
-
-    bytes data = 9;
-
-    SensorCfgChange sensor_cfg = 10;
+    bytes data = 2;
+    NodeRolesChange node_roles = 3;
+    Limits set_limits = 4;
+    NodeId sensor_add = 5;
+    NodeId sensor_remove = 6;
   }
 }
 
-message SensorCfg {
+message SensorState {
   NodeId id = 1;
+}
+
+message Limits {
   // The stores MAY refuse to store anything over this size
-  uint64 max_store_bytes = 2;
+  uint64 max_store_bytes_per_epoch = 1;
+  uint64 max_commits_per_epoch = 2;
 }
 
 // An X.509 cert
