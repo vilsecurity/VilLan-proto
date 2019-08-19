@@ -1,20 +1,25 @@
-syntax = "proto3"
+syntax = "proto3";
+
+package VilSecurity.villan.proto;
+
+service Plugin {
+}
 
 enum ApiType {
   // Some form of human-readable text. Mainly for debugging
-  Readout = 1;
+  Readout = 0;
   // A device that registers an event, such as an IR sensor
-  Alert = 2;
+  Alert = 1;
   // A device that reads an audio signal
-  Microphone = 3;
+  Microphone = 2;
 }
 
-message Readout {
+message ReadoutPush {
   string out = 1;
 }
 
-message Alert {}
+message AlertPush {}
 
-message Microphone {
-  bytes ogg_stream = 0;
+message MicrophonePush {
+  bytes ogg_stream = 1;
 }

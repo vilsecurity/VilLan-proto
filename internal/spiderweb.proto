@@ -1,3 +1,7 @@
+syntax = "proto3";
+
+package VilSecurity.spiderweb.proto;
+
 // -------------------------------- //
 //         Exposed services         //
 // -------------------------------- //
@@ -17,6 +21,7 @@ service Storage {
 
 // This can only be exposed to master nodes and other storages
 service Accessor {
+  // Don't allow sensors to read stored private data
   rpc retrieve_commit (RetrieveCommitRequest) returns (stream RetrieveCommitResponse);
 }
 
@@ -54,6 +59,14 @@ message StoreCommitRequest {
 
 message StoreCommitResponse {
   Hash commit_digest = 1;
+}
+
+message RetreiveEpochRequest {
+  Hash epoch = 1;
+}
+
+message RetreiveEpochResponse {
+  bytes epoch_part = 1;
 }
 
 message RetrieveCommitRequest {
@@ -99,7 +112,7 @@ message Epoch {
   repeated SignedCommitRef commits = 2;
   repeated NodeId roots = 3;
   repeated NodeId masters = 4;
-  map<NodeId, SensorCfg> sensors = 5;
+  repeated SensorCfg sensors = 5;
 
   Time created = 6; 
 }
@@ -135,8 +148,9 @@ message Commit {
 }
 
 message SensorCfg {
+  NodeId id = 1;
   // The stores MAY refuse to store anything over this size
-  uint64 max_store_bytes = 1;
+  uint64 max_store_bytes = 2;
 }
 
 // An X.509 cert
@@ -153,4 +167,8 @@ message Signature {
 // A blake2s hash
 message Hash {
   bytes data = 1;
+}
+
+message Time {
+  uint64 usec = 1;
 }
