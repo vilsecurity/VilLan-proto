@@ -17,6 +17,7 @@ Everyone needs to agree on these parameters:
 | EPOCH_TIME  | 20 seconds | The time between each epoch                                         |
 
 In addition, these constants are non-configurable:
+
 | Constant  | Value                  | Description                                          |
 | --------- | ---------------------- | ---------------------------------------------------- |
 | HASH_LEN  | 32                     | The length of the hash function (in octets)          |
